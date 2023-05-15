@@ -1,0 +1,67 @@
+// © Tomowada27
+
+//@version=5
+strategy("QQE Strategy by HIRO", overlay=true, margin_long=100, margin_short=100)
+//Inputs
+RSI_Period = input(8,title='RSI')
+SF = input(3,title='Slow Factor')
+QQE=input(3.8)
+Wilders_Period = RSI_Period * 2 - 1
+
+longCondition = ta.crossover(ta.sma(close, 14), ta.sma(close, 28))
+if (longCondition)
+    strategy.entry("My Long Entry Id", strategy.long)
+
+shortCondition = ta.crossunder(ta.sma(close, 14), ta.sma(close, 28))
+if (shortCondition)
+    strategy.entry("My Short Entry Id", strategy.short)
+
+//Calculate Moving Averages
+Rsi = ta.rsi(close,RSI_Period)
+RsiMa = ta.ema(Rsi, SF)
+AtrRsi = math.abs(RsiMa[1] - RsiMa)
+MaAtrRsi = ta.ema(AtrRsi, Wilders_Period)
+dar = ta.ema(MaAtrRsi,Wilders_Period) * QQE
+
+longband = 0.0
+shortband = 0.0
+trend = 0
+
+DeltaFastAtrRsi = dar
+RSIndex = RsiMa
+newshortband = RSIndex + DeltaFastAtrRsi
+newlongband = RSIndex - DeltaFastAtrRsi
+longband := RSIndex[1] > longband[1] and RSIndex > longband[1] ? math.max(longband[1], newlongband) : newlongband
+shortband := RSIndex[1] < shortband[1] and RSIndex < shortband[1] ? math.min(shortband[1], newshortband) : newshortband
+cross_1 = ta.cross(longband[1], RSIndex)
+trend := ta.cross(RSIndex, shortband[1]) ? 1 : cross_1 ? -1 : nz(trend[1], 1)
+FastAtrRsiTL = trend == 1 ? longband : shortband
+
+//Buy Rules
+//longcondition = crossover(FastAtrRsiTL, RsiMa)
+//longCondition = crossover(fastMA, slowMA)
+//Sell Rules
+//shortcondition = crossunder(FastAtrRsiTL, RsiMa)
+//shortCondition = crossunder(fastMA, slowMA)
+
+// Find all the QQE Crosses
+QQExlong = 0
+QQExlong := nz(QQExlong[1])
+QQExshort = 0
+QQExshort := nz(QQExshort[1])
+QQExlong := FastAtrRsiTL < RSIndex ? QQExlong + 1 : 0
+QQExshort := FastAtrRsiTL > RSIndex ? QQExshort + 1 : 0
+
+//Conditions
+qqeLong = QQExlong == 1 ? FastAtrRsiTL[1] - 50 : na
+qqeShort = QQExshort == 1 ? FastAtrRsiTL[1] - 50 : na
+
+//Strategy
+
+if(qqeLong)
+    strategy.entry("Long", strategy.long)
+if(qqeShort)
+    strategy.entry("Short", strategy.short)
+
+// plot(FastAtrRsiTL,color=red)
+// plot(RsiMa,color=yellow)
